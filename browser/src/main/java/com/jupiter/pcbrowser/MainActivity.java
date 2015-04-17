@@ -1,31 +1,31 @@
 package com.jupiter.pcbrowser;
 
+import android.support.v4.app.FragmentTransaction;
 import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.Fragment;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.Menu;
-import android.view.MenuItem;
-import android.view.View;
-import android.view.ViewGroup;
-import android.os.Build;
+import android.view.*;
 
+public class MainActivity extends ActionBarActivity implements InitialFragment.OnWelcomeConfirmed,NewsFragment.OnFragmentInteractionListener{
 
-public class MainActivity extends ActionBarActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        if (savedInstanceState == null) {
-            getSupportFragmentManager().beginTransaction()
-                    .add(R.id.container, new PlaceholderFragment())
-                    .commit();
+
+        if (savedInstanceState != null) {
+            return;
         }
+
+        InitialFragment initialFragment = new InitialFragment();
+
+        initialFragment.setArguments(getIntent().getExtras());
+
+        getSupportFragmentManager().beginTransaction().add(R.id.container, initialFragment).commit();
+
+
     }
-
-
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
@@ -47,20 +47,18 @@ public class MainActivity extends ActionBarActivity {
 
         return super.onOptionsItemSelected(item);
     }
+    public void onWelcomeConfirmed(){
+        NewsFragment newsFragment = new NewsFragment();
+        newsFragment.setArguments(getIntent().getExtras());
+        FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
 
-    /**
-     * A placeholder fragment containing a simple view.
-     */
-    public static class PlaceholderFragment extends Fragment {
+        // Replace whatever is in the fragment_container view with this fragment,
+        // and add the transaction to the back stack so the user can navigate back
+        transaction.replace(R.id.container, newsFragment);
+        // Commit the transaction
+        transaction.commit();
+    }
+    public void onNewsFragInteraction(){
 
-        public PlaceholderFragment() {
-        }
-
-        @Override
-        public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                                 Bundle savedInstanceState) {
-            View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-            return rootView;
-        }
     }
 }
