@@ -18,7 +18,7 @@ android {
 
     defaultConfig {
         applicationId "com.jupiter.pcbrowser"
-        minSdkVersion 14
+        minSdkVersion 21
         targetSdkVersion 21
         versionCode 1
         versionName "1.0"
@@ -39,6 +39,7 @@ android {
 dependencies {
     compile fileTree(dir: 'libs', include: ['*.jar'])
     compile 'com.android.support:appcompat-v7:21.0.3'
-    compile 'com.loopj.android:android-async-http:1.4.4'
-    compile 'com.squareup.picasso:picasso:2.1.1'
+    compile 'com.loopj.android:android-async-http:1.4.5'
+    compile 'com.android.support:cardview-v7:21.0.+'
+    compile 'com.android.support:recyclerview-v7:21.0.+'
 }

@@ -1,14 +1,15 @@
 package com.jupiter.Service;
 
 import android.app.Service;
+import android.app.job.JobInfo;
+import android.app.job.JobScheduler;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
 import android.os.*;
 import android.os.Process;
 import android.util.Log;
 import android.widget.Toast;
-import com.loopj.android.http.JsonHttpResponseHandler;
-import org.apache.http.Header;
-import org.json.JSONObject;
 
 
 /**
@@ -19,6 +20,10 @@ public class NewsPullService extends Service {
     private Looper mServiceLooper;
     private ServiceHandler mServiceHandler;
     private boolean scheduleRunning;
+    private JobScheduler scheduler;
+    private JobInfo jobInfo;
+    private ComponentName jobServiceName;
+    private  PullJobService mPullJobService;
 
     private final class ServiceHandler extends Handler {
         public ServiceHandler(Looper looper) {
@@ -26,18 +31,31 @@ public class NewsPullService extends Service {
         }
         @Override
         public void handleMessage(final Message msg) {
-            JupiterHttpClient.get("", null, new JsonHttpResponseHandler() {
+
+            jobServiceName = new ComponentName(getApplicationContext(), PullJobService.class);
+            jobInfo = new JobInfo.Builder(1000, jobServiceName)
+                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
+                    .setRequiresDeviceIdle(false)
+                    .setRequiresCharging(false)
+                    .setPeriodic(2000)
+                    .build();
+            scheduler = (JobScheduler) getApplicationContext().getSystemService(Context.JOB_SCHEDULER_SERVICE);
+            int result = scheduler.schedule(jobInfo);
+            if (result == JobScheduler.RESULT_SUCCESS) {
+                Toast.makeText(getApplicationContext(), "job scheduler", Toast.LENGTH_SHORT).show();
+            }
+            /*JupiterHttpClient.get("", null, new JsonHttpResponseHandler() {
                 @Override
                 public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                    Log.d("response",response.toString());
-                    //stopSelf();
+                    Log.d("response", response.toString());
+                    stopSelf();
                 }
 
                 @Override
                 public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                    //stopSelf();
+                    stopSelf();
                 }
-            });
+            });*/
         }
     }
     public void onCreate() {
@@ -45,10 +63,10 @@ public class NewsPullService extends Service {
         // separate thread because the service normally runs in the process's
         // main thread, which we don't want to block.  We also make it
         // background priority so CPU-intensive work will not disrupt our UI.
-        /*HandlerThread thread = new HandlerThread("ServiceStartArguments",
-                Process.THREAD_PRIORITY_BACKGROUND);
-        thread.start();*/
-
+        //HandlerThread thread = new HandlerThread("ServiceStartArguments",
+        //        Process.THREAD_PRIORITY_BACKGROUND);
+        //thread.start();
+        Toast.makeText(this, "service create", Toast.LENGTH_SHORT).show();
         // Get the HandlerThread's Looper and use it for our Handler
         mServiceLooper = this.getMainLooper();
         mServiceHandler = new ServiceHandler(mServiceLooper);
@@ -57,9 +75,9 @@ public class NewsPullService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d("Service", "Serviec Start");
+        Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
         if(!scheduleRunning) {
-
+            Toast.makeText(this, "start schedule", Toast.LENGTH_SHORT).show();
             Message msg = mServiceHandler.obtainMessage();
             msg.arg1 = startId;
             mServiceHandler.sendMessage(msg);
@@ -77,6 +95,7 @@ public class NewsPullService extends Service {
 
     @Override
     public void onDestroy() {
+        scheduler.cancelAll();
         Log.d("Service","Service Stop");
         Toast.makeText(this, "service done", Toast.LENGTH_SHORT).show();
     }

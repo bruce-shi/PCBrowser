@@ -30,6 +30,10 @@
                 android:name="com.jupiter.Service.NewsPullService"
                 android:process="com.jupiter.pc_process"
                />
+        <service
+                android:name="com.jupiter.Service.PullJobService"
+                android:permission="android.permission.BIND_JOB_SERVICE"
+                android:exported="true"/>
     </application>
 
 </manifest>
