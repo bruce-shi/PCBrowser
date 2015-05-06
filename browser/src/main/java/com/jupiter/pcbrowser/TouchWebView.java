@@ -15,14 +15,13 @@ public class TouchWebView extends WebView {
 
         float downXValue;
         long downTime;
-        private ViewFlipper flipper;
 
         private float lastTouchX, lastTouchY;
         private boolean hasMoved = false;
 
-        public TouchWebView(Context context,ViewFlipper flipper) {
+        public TouchWebView(Context context) {
             super(context);
-            this.flipper = flipper;
+
         }
 
         @Override
@@ -46,23 +45,23 @@ public class TouchWebView extends WebView {
                         float difference = Math.abs(downXValue - currentX);
                         long time = currentTime - downTime;
                         Log.i("Touch Event:", "Distance: " + difference + "px Time: "+ time + "ms");
-                        /** X轴滑动距离大于100，并且时间小于220ms,并且向X轴右方向滑动   && (time < 220) */
+
                         if ((downXValue < currentX) && (difference > 100 && (time < 220))) {
-                            /** 跳到上一页 */
-                            this.flipper.setInAnimation(AnimationUtils.loadAnimation(
+
+                            /*this.flipper.setInAnimation(AnimationUtils.loadAnimation(
                                     this.getContext(), R.anim.slide_in_from_left));
                             this.flipper.setOutAnimation(AnimationUtils.loadAnimation(
                                     this.getContext(), R.anim.slide_out_to_right));
-                            flipper.showPrevious();
+                            flipper.showPrevious();*/
                         }
-                        /** X轴滑动距离大于100，并且时间小于220ms,并且向X轴左方向滑动 */
+
                         if ((downXValue > currentX) && (difference > 100) && (time < 220)) {
-                            /** 跳到下一页 */
-                            this.flipper.setInAnimation(AnimationUtils.loadAnimation(
+
+                            /*this.flipper.setInAnimation(AnimationUtils.loadAnimation(
                                     this.getContext(), R.anim.slide_in_from_right));
                             this.flipper.setOutAnimation(AnimationUtils.loadAnimation(
                                     this.getContext(), R.anim.slide_out_to_left));
-                            flipper.showNext();
+                            flipper.showNext();*/
                         }
                         break;
                 }

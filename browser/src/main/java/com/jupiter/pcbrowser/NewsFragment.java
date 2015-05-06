@@ -32,8 +32,7 @@ public class NewsFragment extends Fragment {
 
     private OnFragmentInteractionListener mListener;
 
-    private TouchWebView myWebView;
-    private ViewFlipper viewFlipper;
+    private TouchWebView myWebView = new TouchWebView(getActivity());
 
     /**
      * Use this factory method to create a new instance of
@@ -69,9 +68,7 @@ public class NewsFragment extends Fragment {
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_news, container, false);
-        viewFlipper = (ViewFlipper) rootView.findViewById(R.id.viewFlipper);
-        viewFlipper.addView(addWebView("http://www.baidu.com"));
-        viewFlipper.addView(addWebView("http://www.google.com"));
+
         return rootView;
     }
     @Override
@@ -106,8 +103,7 @@ public class NewsFragment extends Fragment {
         public void onNewsFragInteraction();
     }
 
-    private View addWebView(String url){
-        myWebView = new TouchWebView(getActivity(), viewFlipper);
+    private View updateWebView(String url){
         myWebView.getSettings().setJavaScriptEnabled(true);
         myWebView.setVerticalScrollBarEnabled(false);
         myWebView.loadUrl(url);
