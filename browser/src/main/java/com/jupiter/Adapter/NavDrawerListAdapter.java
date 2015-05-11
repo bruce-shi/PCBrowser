@@ -36,7 +36,7 @@ public class NavDrawerListAdapter extends BaseAdapter{
     }
 
     @Override
-    public long getItemId(int position) {
+    public long getItemId(int position){
         return position;
     }
 

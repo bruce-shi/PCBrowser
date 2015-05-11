@@ -6,10 +6,12 @@ import android.app.job.JobScheduler;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.*;
 import android.os.Process;
 import android.util.Log;
-import android.widget.Toast;
+import com.jupiter.pcbrowser.*;
+
 
 
 /**
@@ -19,85 +21,121 @@ public class NewsPullService extends Service {
 
     private Looper mServiceLooper;
     private ServiceHandler mServiceHandler;
-    private boolean scheduleRunning;
+
     private JobScheduler scheduler;
     private JobInfo jobInfo;
     private ComponentName jobServiceName;
-    private  PullJobService mPullJobService;
 
     private final class ServiceHandler extends Handler {
-        public ServiceHandler(Looper looper) {
+
+        public ServiceHandler(Looper looper,Context context) {
             super(looper);
+
         }
         @Override
         public void handleMessage(final Message msg) {
-
-            jobServiceName = new ComponentName(getApplicationContext(), PullJobService.class);
-            jobInfo = new JobInfo.Builder(1000, jobServiceName)
-                    .setRequiredNetworkType(JobInfo.NETWORK_TYPE_ANY)
-                    .setRequiresDeviceIdle(false)
-                    .setRequiresCharging(false)
-                    .setPeriodic(2000)
-                    .build();
-            scheduler = (JobScheduler) getApplicationContext().getSystemService(Context.JOB_SCHEDULER_SERVICE);
-            int result = scheduler.schedule(jobInfo);
-            if (result == JobScheduler.RESULT_SUCCESS) {
-                Toast.makeText(getApplicationContext(), "job scheduler", Toast.LENGTH_SHORT).show();
-            }
-            /*JupiterHttpClient.get("", null, new JsonHttpResponseHandler() {
-                @Override
-                public void onSuccess(int statusCode, Header[] headers, JSONObject response) {
-                    Log.d("response", response.toString());
-                    stopSelf();
-                }
-
-                @Override
-                public void onFailure(int statusCode, Header[] headers, Throwable throwable, JSONObject errorResponse) {
-                    stopSelf();
-                }
-            });*/
+            scheduleJob();
         }
     }
+
+    public NewsPullService(){
+        //android.os.Debug.waitForDebugger();
+    }
+    private void scheduleJob(){
+        SharedPreferences sharedPref = getSharedPreferences(getString(R.string.sharedpref), Context.MODE_MULTI_PROCESS);
+
+        boolean auto_push = sharedPref.getBoolean(SettingsActivity.AUTO_PUSH_KEY, true);
+        if(auto_push) {
+            boolean only_charge = sharedPref.getBoolean(SettingsActivity.ONLY_CHARGE_KEY, false);
+            boolean wifi_only = sharedPref.getBoolean(SettingsActivity.ONLY_WIFI_KEY, false);
+            long period = 1;
+            try {
+                period = Long.valueOf(sharedPref.getString(SettingsActivity.UPDATE_PERIOD_KEY, "10"));
+                jobServiceName = new ComponentName(this, PullJobService.class);
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+            jobInfo = new JobInfo.Builder(1000, jobServiceName)
+                    .setRequiredNetworkType(wifi_only ? JobInfo.NETWORK_TYPE_UNMETERED : JobInfo.NETWORK_TYPE_ANY)
+                    .setRequiresDeviceIdle(false)
+                    .setRequiresCharging(only_charge)
+                    .setPeriodic(period * 1000)//period * 60000)
+                    .build();
+            try {
+                scheduler = (JobScheduler) this.getSystemService(Context.JOB_SCHEDULER_SERVICE);
+                int result = scheduler.schedule(jobInfo);
+                if (result == JobScheduler.RESULT_SUCCESS) {
+                    Log.d("Server","scheduled");
+                }
+            }catch (Exception ex){
+                ex.printStackTrace();
+            }
+
+        }
+    }
+
     public void onCreate() {
-        // Start up the thread running the service.  Note that we create a
-        // separate thread because the service normally runs in the process's
-        // main thread, which we don't want to block.  We also make it
-        // background priority so CPU-intensive work will not disrupt our UI.
-        //HandlerThread thread = new HandlerThread("ServiceStartArguments",
-        //        Process.THREAD_PRIORITY_BACKGROUND);
-        //thread.start();
-        Toast.makeText(this, "service create", Toast.LENGTH_SHORT).show();
-        // Get the HandlerThread's Looper and use it for our Handler
+
         mServiceLooper = this.getMainLooper();
-        mServiceHandler = new ServiceHandler(mServiceLooper);
-        scheduleRunning = false;
+        mServiceHandler = new ServiceHandler(mServiceLooper,this);
+
+
+
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Toast.makeText(this, "service start", Toast.LENGTH_SHORT).show();
-        if(!scheduleRunning) {
-            Toast.makeText(this, "start schedule", Toast.LENGTH_SHORT).show();
+        if(scheduler == null) {
+
             Message msg = mServiceHandler.obtainMessage();
             msg.arg1 = startId;
             mServiceHandler.sendMessage(msg);
-            scheduleRunning = true;
         }
 
         return START_STICKY;
     }
+    @Override
+    public void onDestroy() {
+        if(scheduler != null) {
+            scheduler.cancelAll();
+            scheduler = null ;
+        }
+    }
 
     @Override
     public IBinder onBind(Intent intent) {
-        // We don't provide binding, so return null
-        return null;
+        return mBinder;
     }
 
-    @Override
-    public void onDestroy() {
-        scheduler.cancelAll();
-        Log.d("Service","Service Stop");
-        Toast.makeText(this, "service done", Toast.LENGTH_SHORT).show();
-    }
+    private MStub mBinder = new MStub();
 
+    private final class MStub extends ILocalService.Stub{
+        public MStub(){
+        }
+
+        public int getPid() {
+            //return 0;
+            return Process.myPid();
+        }
+
+        public void restartServer() throws RemoteException {
+            //android.os.Debug.waitForDebugger();
+            if(scheduler != null) {
+                scheduler.cancelAll();
+                scheduler = null;
+            }
+
+            scheduleJob();
+            Log.d("Server","restart");
+        }
+
+        public void startServer() throws RemoteException{
+            if(scheduler == null) {
+                scheduleJob();
+                Log.d("Server", "start");
+            }else{
+                Log.d("Server","already start");
+            }
+        }
+    }
 }

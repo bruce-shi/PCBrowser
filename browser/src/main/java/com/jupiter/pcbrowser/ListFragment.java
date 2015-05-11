@@ -4,15 +4,26 @@ import android.app.Activity;
 import android.net.Uri;
 import android.os.Bundle;
 import android.app.Fragment;
+import android.os.Handler;
+import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import com.jupiter.Adapter.NewsListItemAdapter;
+import com.jupiter.model.CachedNews;
+
 import com.jupiter.model.NewsListItem;
+import com.orangegangsters.github.swipyrefreshlayout.library.SwipyRefreshLayout;
+import com.orangegangsters.github.swipyrefreshlayout.library.SwipyRefreshLayoutDirection;
+import com.orm.SugarRecord;
+
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 
@@ -38,9 +49,13 @@ public class ListFragment extends Fragment {
 
 
     private RecyclerView mRecyclerView;
+    private SwipyRefreshLayout mSwipyRefreshLayout;
+
     private NewsListItemAdapter mAdapter;
     private RecyclerView.LayoutManager mLayoutManager;
     private List<NewsListItem> myDataset;
+
+    private String category;
 
     /**
      * Use this factory method to create a new instance of
@@ -61,13 +76,17 @@ public class ListFragment extends Fragment {
         return fragment;
     }
 
-    public ListFragment() {
+    public ListFragment(){
+        myDataset = new ArrayList<NewsListItem>();
         // Required empty public constructor
     }
+
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
         if (getArguments() != null) {
             mParam1 = getArguments().getString(ARG_PARAM1);
             mParam2 = getArguments().getString(ARG_PARAM2);
@@ -85,18 +104,23 @@ public class ListFragment extends Fragment {
         mRecyclerView.setLayoutManager(mLayoutManager);
 
         // specify an adapter (see also next example)
+
         mAdapter = new NewsListItemAdapter(myDataset);
+        mAdapter.setParent(this);
         mRecyclerView.setAdapter(mAdapter);
+
+
+
+        mSwipyRefreshLayout = (SwipyRefreshLayout) root.findViewById(R.id.swipe_container);
+        mSwipyRefreshLayout.setOnRefreshListener(new SwipyRefreshLayout.OnRefreshListener() {
+            @Override
+            public void onRefresh(SwipyRefreshLayoutDirection direction) {
+                updateNewsList(direction == SwipyRefreshLayoutDirection.TOP);
+            };
+        });
+        loadNewsList();
         return root;
     }
-
-    // TODO: Rename method, update argument and hook method into UI event
-    public void onButtonPressed(Uri uri) {
-        if (mListener != null) {
-            mListener.ListInteractionListener(uri);
-        }
-    }
-
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
@@ -126,10 +150,91 @@ public class ListFragment extends Fragment {
      */
     public interface OnFragmentInteractionListener {
         // TODO: Update argument type and name
-        public void ListInteractionListener(Uri uri);
+        public void onItemClick(Bundle param);
     }
 
     public void setListItems(ArrayList<NewsListItem> myDataset){
         this.myDataset = myDataset;
+    }
+
+    public void onItemClick(Bundle param){
+        mListener.onItemClick(param);
+    }
+
+
+    public void clearListItem(){
+        this.myDataset.clear();
+    }
+    public void loadNewsList(){
+        //Log.d("ListFragment","load news list "+this.category);
+        List<CachedNews> news = CachedNews.
+                findWithQuery(CachedNews.class,
+                        "Select * from "+ SugarRecord.getTableName(CachedNews.class) +" where category like ? order by id desc limit ? ", category, "30");
+        //Log.d("ListFragment", Integer.toString(news.size()));
+        this.clearListItem();
+        for(int i=0;i<news.size();i++ ) {
+            CachedNews item = news.get(i);
+            item.setSent(true);
+            item.save();
+            //Log.d("Updated", item.getCategory());
+            this.myDataset.add(new NewsListItem(item.getTitle(),
+                    item.getCreateDate(), item.getDescription(),
+                    item.getId(),item.isViewed(),item.getContent(),item.getStaticURL(),item.getCategory(),item.getPublishDate()));
+        }
+        this.mAdapter.notifyDataSetChanged();
+    }
+    public void updateNewsList(boolean top) {
+        //Log.d("ListFragment", "update news list " + this.category);
+        List<CachedNews> news;
+        if(this.myDataset.size()==0){
+            String last_id = "0" ;
+            news = CachedNews.findWithQuery(CachedNews.class,
+                    "Select * from " + SugarRecord.getTableName(CachedNews.class) +
+                            " where id > "+last_id+" and category like ? order by id desc limit ? ",
+                    category, "20");
+        }
+        else if(top) {
+            String last_id = Long.toString(this.myDataset.
+                    get(0).getId());
+             news = CachedNews.findWithQuery(CachedNews.class,
+                            "Select * from " + SugarRecord.getTableName(CachedNews.class) +
+                                    " where id > "+last_id+" and category like ? order by id desc limit ? ",
+                            category, "20");
+
+        } else {
+            String last_id = Long.toString(this.myDataset.
+                    get(this.myDataset.size()-1).getId());
+            news = CachedNews.findWithQuery(CachedNews.class,
+                            "Select * from " + SugarRecord.getTableName(CachedNews.class) +
+                                    " where id < "+ last_id +" and category like ? order by id asc limit ? ",
+                            category, "20");
+
+        }
+        //Log.d("ListFragment",Integer.toString(news.size()));
+        for(int i=news.size()-1;i>=0;i-- ) {
+            CachedNews item = news.get(i);
+            item.setSent(true);
+            item.save();
+            //Log.d("Updated",item.getCategory());
+            if( top ) {
+                this.myDataset.add(0, new NewsListItem(item.getTitle(),
+                        item.getCreateDate(), item.getDescription(),
+                        item.getId(), item.isViewed(), item.getContent(), item.getStaticURL(), item.getCategory(),item.getPublishDate()));
+            }else{
+                this.myDataset.add(new NewsListItem(item.getTitle(),
+                        item.getCreateDate(), item.getDescription(),
+                        item.getId(), item.isViewed(), item.getContent(), item.getStaticURL(), item.getCategory(),item.getPublishDate()));
+            }
+        }
+
+        mAdapter.notifyDataSetChanged();
+        mSwipyRefreshLayout.setRefreshing(false);
+
+    }
+    public void setCategory(String category){
+        this.category = category;
+        if(this.mAdapter != null){
+            this.loadNewsList();
+        }
     }
 }

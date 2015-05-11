@@ -2,6 +2,9 @@
     <string name="app_name">PCBrowser</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
+    <string name="action_logout">Logout</string>
+    <string name="action_delete_test">Delete Test</string>
+    <string name="action_delete_all_cache">Delete Cache</string>
 
     <!-- Nav Drawer Menu Items -->
     <string-array name="nav_drawer_items">
@@ -10,7 +13,18 @@
         <item >Entertainment</item>
         <item >Technology</item>
         <item >Politics</item>
-        <item >My Favorite</item>
+        <item >Finance</item>
+        <item >Game</item>
+    </string-array>
+    <!--Nav Drawer Menu category name-->
+    <string-array name="nav_drawer_catogory">
+        <item >%%</item>
+        <item >sports</item>
+        <item >entertainment</item>
+        <item >technology</item>
+        <item >politics</item>
+        <item >finance</item>
+        <item >game</item>
     </string-array>
 
     <!-- Nav Drawer List Item Icons -->
@@ -21,11 +35,23 @@
         <item>@drawable/quaver3</item>
         <item>@drawable/lightbulb4</item>
         <item>@drawable/document6</item>
-        <item>@drawable/hearts34</item>
+        <item>@drawable/facebook2</item>
+        <item>@drawable/rocket77</item>
     </array>
     <string name="desc_list_item_icon">Item Icon</string>
 
-<!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>
     <string name="title_activity_news_content">NewsContentActivity</string>
+    <string name="title_activity_login">LoginActivity</string>
+
+
+    <string name="username">Username</string>
+    <string name="password">Password</string>
+    <string name="email">Email</string>
+    <string name="password_conf">Confirm Password</string>
+
+
+    <string name="appkey">com.jupiter.appkey</string>
+    <string name="islogin">com.jupiter.islogin</string>
+    <string name="sharedpref">com.jupiter.shared_preference</string>
 </resources>

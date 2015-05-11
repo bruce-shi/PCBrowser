@@ -1,29 +1,32 @@
 package com.jupiter.pcbrowser;
 
-import android.app.Fragment;
-import android.app.FragmentManager;
-import android.app.IntentService;
-import android.content.Intent;
+import android.app.*;
+import android.content.*;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.res.Configuration;
 import android.content.res.TypedArray;
-import android.net.Uri;
+import android.os.IBinder;
+import android.os.RemoteException;
+import android.preference.PreferenceManager;
 import android.support.v4.widget.DrawerLayout;
-import android.app.Activity;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.util.Log;
 import android.view.*;
 import android.widget.AdapterView;
 import android.widget.ListView;
-import android.widget.Toast;
-import com.jupiter.Adapter.NavDrawerListAdapter;
-import com.jupiter.Service.NewsPullService;
-import com.jupiter.model.NavDrawerItem;
-import com.jupiter.model.NewsListItem;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.Random;
+import com.jupiter.Adapter.NavDrawerListAdapter;
+import com.jupiter.Helper.Helper;
+import com.jupiter.Service.NewsPullService;
+
+import com.jupiter.model.CachedNews;
+import com.jupiter.model.NavDrawerItem;
+import com.orm.SugarRecord;
+import org.apache.http.message.HeaderValueParser;
+
+import java.util.*;
 
 public class MainActivity extends Activity  implements ListFragment.OnFragmentInteractionListener {
 
@@ -43,10 +46,18 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
     //Icons for slide menu
     private TypedArray navMenuIcons;
 
+    private String[]  navMenuCategory;
+
     private ArrayList<NavDrawerItem> navDrawerItems;
     private NavDrawerListAdapter adapter;
-    private ArrayList<NewsListItem> listItems;
-    private Intent mServiceIntent;
+    //private ArrayList<NewsListItem> listItems;
+
+
+    private int currentNavPosition;
+    private ListFragment fragment;
+
+    private static final int SETTING_ACTIVITY_REQUEST_CODE = 101;
+    public static String PREFERENCE_CHANGED = "preference_changed";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
 
@@ -56,6 +67,7 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
         mAppTitle = mDrawerTitle = getTitle();
 
         navMenuTitles = getResources().getStringArray(R.array.nav_drawer_items);
+        navMenuCategory = getResources().getStringArray(R.array.nav_drawer_catogory);
         navMenuIcons = getResources().obtainTypedArray(R.array.nav_drawer_icons);
         mDrawerLayout = (DrawerLayout) findViewById(R.id.container);
         mDrawerList = (ListView) findViewById(R.id.list_slidermenu);
@@ -63,17 +75,19 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
         navDrawerItems = new ArrayList<NavDrawerItem>();
 
         // Home
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[0], navMenuIcons.getResourceId(0, -1)));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[0], navMenuCategory[0],navMenuIcons.getResourceId(0, 0)));
         // Sports
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[1], navMenuIcons.getResourceId(1, -1),true,"0"));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[1],navMenuCategory[1], navMenuIcons.getResourceId(1, 0)));
         // Entertainment
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[2], navMenuIcons.getResourceId(2, -1),true,"0"));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[2], navMenuCategory[2],navMenuIcons.getResourceId(2, 0)));
         // Technologies
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[3], navMenuIcons.getResourceId(3, -1), true, "10"));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[3], navMenuCategory[3],navMenuIcons.getResourceId(3, 0)));
         // Politics
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[4], navMenuIcons.getResourceId(4, -1), true, "20+"));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[4], navMenuCategory[4], navMenuIcons.getResourceId(4, 0)));
         // My Favorite
-        navDrawerItems.add(new NavDrawerItem(navMenuTitles[5], navMenuIcons.getResourceId(5, -1)));
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[5], navMenuCategory[5], navMenuIcons.getResourceId(5, 0)));
+
+        navDrawerItems.add(new NavDrawerItem(navMenuTitles[6], navMenuCategory[6], navMenuIcons.getResourceId(6, 0)));
 
         navMenuIcons.recycle();
 
@@ -103,19 +117,27 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
 
         mDrawerList.setOnItemClickListener(new SlideMenuClickListener());
 
-        listItems = new ArrayList<NewsListItem>();
+        fragment = new ListFragment();
+
         if (savedInstanceState == null) {
             // on first time display view for first nav item
+            FragmentManager fragmentManager = getFragmentManager();
+            fragmentManager.beginTransaction()
+                    .replace(R.id.frame_container, fragment).commit();
             displayFragment(0);
         }
 
 
-        startBackendService();
-    }
-
-    private void startBackendService() {
-        mServiceIntent = new Intent(this, NewsPullService.class);
+        final Intent mServiceIntent = new Intent(this,NewsPullService.class);
         startService(mServiceIntent);
+        mServiceIntent.setAction("com.jupiter.pcbrowser.NewsPullService");
+        //final Intent eintent = new Intent(Helper.createExplicitFromImplicitIntent(this, mServiceIntent));
+        // mServiceIntent.setPackage(getPackageName());
+        bindService(mServiceIntent, mConnection, Context.BIND_AUTO_CREATE);
+
+        //set the default pref file and mode for preference
+        PreferenceManager.setDefaultValues(getApplicationContext(), getString(R.string.sharedpref), Context.MODE_MULTI_PROCESS, R.xml.pref_general, false);
+
     }
 
     @Override
@@ -137,7 +159,30 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
 
         //noinspection SimplifiableIfStatement
         if (id == R.id.action_settings) {
+            Intent intent = new Intent(this, SettingsActivity.class);
+
+            intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            
+            this.startActivityForResult(intent, SETTING_ACTIVITY_REQUEST_CODE);
             return true;
+        }
+        if(id == R.id.action_logout){
+            SharedPreferences sp = getSharedPreferences(getString(R.string.sharedpref),Context.MODE_MULTI_PROCESS);
+            SharedPreferences.Editor editor= sp.edit();
+            editor.putString(getString(R.string.appkey), "");
+            editor.putBoolean(getString(R.string.islogin),false);
+            editor.commit();
+            Intent login = new Intent(this,LoginActivity.class);
+            this.startActivity(login);
+            this.finish();
+
+        }
+        if(id == R.id.action_delete_test){
+            CachedNews.executeQuery("delete from "+ SugarRecord.getTableName(CachedNews.class)+" where title like 'Fake%'");
+
+        }
+        if(id == R.id.action_delete_all_cache){
+            CachedNews.executeQuery("delete from "+ SugarRecord.getTableName(CachedNews.class));
         }
 
         return super.onOptionsItemSelected(item);
@@ -171,31 +216,50 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
         mDrawerToggle.onConfigurationChanged(newConfig);
     }
 
+    @Override
+    public void  onItemClick(Bundle param){
+        Intent intent = new Intent(this, NewsContentActivity.class);
 
-    public void ListInteractionListener(Uri uri){
+        //intent.putExtra(PCConstant.NEWS_TITLE,message);
+        //intent.putExtra(PCConstant.NEWS_ID, currentItem.getId());
+        intent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        intent.putExtras(param);
+        startActivity(intent);
+    }
 
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        switch(requestCode) {
+            case SETTING_ACTIVITY_REQUEST_CODE : {
+                if (resultCode == Activity.RESULT_OK && data.getBooleanExtra(PREFERENCE_CHANGED,false)) {
+                    try {
+                        mService.restartServer();
+                    }catch(RemoteException re){
+                        re.printStackTrace();
+                    }
+
+                }
+                break;
+            }
+        }
+    }
+
+    @Override
+    public void finish(){
+        unbindService(mConnection);
+        super.finish();
     }
 
     private void displayFragment(int position){
-        ListFragment fragment = null;
-        switch (position){
-            case 0:
-                fragment = new ListFragment();
-                break;
-            default:
-                fragment = new ListFragment();
-        }
-        if(fragment !=null){
-            FragmentManager fragmentManager = getFragmentManager();
-            fragmentManager.beginTransaction()
-                    .replace(R.id.frame_container, fragment).commit();
 
+        if(fragment !=null){
+
+            fragment.setCategory(navMenuCategory[position]);
             // update selected item and title, then close the drawer
-            this.listItems.clear();
-            for (int i =0 ;i<10 ;i++){
-                this.listItems.add(new NewsListItem(Integer.toString((new Random()).nextInt()), new Date(), "zheshiyige ceshiyong "+i));
-            }
-            fragment.setListItems(this.listItems);
+
+            //loadNewsList(navMenuCategory[position], fragment);
+
             mDrawerList.setItemChecked(position, true);
             mDrawerList.setSelection(position);
             setTitle(navMenuTitles[position]);
@@ -206,7 +270,6 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
         }
 
     }
-
     private class SlideMenuClickListener implements android.widget.AdapterView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position,
@@ -215,4 +278,43 @@ public class MainActivity extends Activity  implements ListFragment.OnFragmentIn
             displayFragment(position);
         }
     }
+
+
+
+    /***************************************************************
+     * code to communicate with the server
+     *
+     *
+     ***************************************************************/
+
+    ILocalService mService = null;
+
+    private ServiceConnection mConnection = new ServiceConnection() {
+        public void onServiceConnected(ComponentName className,
+                                       IBinder service) {
+            // This is called when the connection with the service has been
+            // established, giving us the service object we can use to
+            // interact with the service.  We are communicating with our
+            // service through an IDL interface, so get a client-side
+            // representation of that from the raw service object.
+            mService = ILocalService.Stub.asInterface(service);
+
+            try {
+                mService.startServer();
+            }catch (RemoteException re){
+                re.printStackTrace();
+            }
+
+            Log.d(this.getClass().toString(),"Server Disconnect");
+
+        }
+
+        public void onServiceDisconnected(ComponentName className) {
+            // This is called when the connection with the service has been
+            // unexpectedly disconnected -- that is, its process crashed.
+            mService = null;
+            Log.d(this.getClass().toString(),"Server Disconnect");
+        }
+    };
+
 }

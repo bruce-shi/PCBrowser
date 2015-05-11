@@ -1,11 +1,24 @@
 <resources>
 
     <!-- Base application theme. -->
-    <style name="AppTheme" parent="android:Theme.Material">
-        <!-- Customize your theme here. -->
+    <style name="AppTheme" parent="android:Theme.Material.Light.DarkActionBar">
+        <item name="android:windowContentTransitions">true</item>
+        <item name="android:windowAllowEnterTransitionOverlap">true</item>
+        <item name="android:windowAllowReturnTransitionOverlap">true</item>
     </style>
     <style name="CardViewStyle" parent="android:Widget.TextView">
         <item name="android:background">@drawable/card</item>
+    </style>
+
+    <style name="not_viewed" parent="android:Widget.TextView">
+        <item name="android:textStyle">bold</item>
+        <item name="android:fontFamily">SimSun</item>
+        <item name="android:textColor">#000000</item>
+    </style>
+    <style name="viewed" parent="android:Widget.TextView">
+        <item name="android:fontFamily">SimSun</item>
+        <item name="android:textStyle">normal|italic</item>
+        <item name="android:textColor">#bbbbbb</item>
     </style>
 
 </resources>
